@@ -114,14 +114,33 @@ def submit_sequences():
                     print("\n请在浏览器中完成 Google 登录。")
                     print("完成后请按回车键继续...")
                     input()
+                    time.sleep(3)  # 给页面更多加载时间
                 
                 # 检查 Add entity 按钮
                 print("检查 Add entity 按钮...")
-                add_button = page.locator('span:has-text("Add entity")')
+                # 使用更具体的选择器
+                add_button = page.locator('button.new-sequence.mdc-button')
                 
-                if not add_button.is_visible(timeout=5000):
+                max_retries = 3
+                for i in range(max_retries):
+                    try:
+                        if add_button.is_visible(timeout=5000):
+                            break
+                        print(f"尝试 {i+1}/{max_retries}: 等待 Add entity 按钮出现...")
+                        time.sleep(2)
+                    except Exception as e:
+                        print(f"尝试 {i+1} 失败: {e}")
+                        if i == max_retries - 1:
+                            raise
+                
+                if not add_button.is_visible():
                     print("错误：无法找到 Add entity 按钮，请确保已登录")
+                    # 打印页面内容以便调试
+                    print("\n当前页面内容:")
+                    print(page.content())
                     return False
+                
+                print("找到 Add entity 按钮！")
                 
                 # 提交序列
                 for name, sequence in sequences:
