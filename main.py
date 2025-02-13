@@ -103,7 +103,7 @@ def submit_sequences():
                 
                 # 访问网站
                 print("正在访问 AlphaFold Server...")
-                page.goto("https://alphafold.ebi.ac.uk/", timeout=60000)
+                page.goto("https://alphafoldserver.com/", timeout=60000)
                 time.sleep(2)
                 
                 # 等待并点击登录按钮
