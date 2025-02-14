@@ -113,28 +113,41 @@ def submit_sequences():
                     input()
                     time.sleep(3)  # 给页面更多加载时间
                 
+                # 等待页面加载完成
+                print("等待页面加载完成...")
+                time.sleep(2)
+                
+                # 先点击 Clear 按钮清除可能存在的序列
+                print("尝试清除现有序列...")
+                try:
+                    clear_button = page.locator('button:has-text("Clear")')
+                    if clear_button.is_visible(timeout=5000):
+                        clear_button.click()
+                        print("已点击 Clear 按钮")
+                        time.sleep(1)
+                except Exception as e:
+                    print(f"点击 Clear 按钮时出错: {e}")
+                    # 尝试使用JavaScript点击
+                    try:
+                        page.evaluate('''() => {
+                            const buttons = Array.from(document.querySelectorAll('button'));
+                            const clearButton = buttons.find(button => 
+                                button.querySelector('.mdc-button__label')?.textContent.trim() === 'Clear'
+                            );
+                            if (clearButton) clearButton.click();
+                        }''')
+                        print("已通过JavaScript点击 Clear 按钮")
+                        time.sleep(1)
+                    except Exception as e:
+                        print(f"JavaScript点击也失败: {e}")
+                
                 # 检查 Add entity 按钮
                 print("检查 Add entity 按钮...")
-                # 使用更具体的选择器
-                add_button = page.locator('button.new-sequence.mdc-button')
-                
-                max_retries = 3
-                for i in range(max_retries):
-                    try:
-                        if add_button.is_visible(timeout=5000):
-                            break
-                        print(f"尝试 {i+1}/{max_retries}: 等待 Add entity 按钮出现...")
-                        time.sleep(2)
-                    except Exception as e:
-                        print(f"尝试 {i+1} 失败: {e}")
-                        if i == max_retries - 1:
-                            raise
-                
-                if not add_button.is_visible():
-                    print("错误：无法找到 Add entity 按钮，请确保已登录")
-                    # 打印页面内容以便调试
-                    print("\n当前页面内容:")
-                    print(page.content())
+                add_button = page.locator('button:has-text("Add entity")')
+                try:
+                    add_button.wait_for(state='visible', timeout=5000)
+                except Exception as e:
+                    print(f"错误：无法找到 Add entity 按钮 - {e}")
                     return False
                 
                 print("找到 Add entity 按钮！")
@@ -230,8 +243,11 @@ def submit_sequences():
                         
                         try:
                             # 点击第一个 Save job 按钮
-                            save_button.click(timeout=5000)
-                            print("已点击第一个 Save job 按钮")
+                            # save_button.click(timeout=5000)
+                            # print("已点击第一个 Save job 按钮")
+
+                            continue_button = page.locator('span:has-text(" Continue and preview job ")')
+                            continue_button.click()
                             
                             # 等待对话框出现
                             dialog = page.locator('gdm-af-preview-dialog')
@@ -304,38 +320,79 @@ def submit_sequences():
                             #     time.sleep(1)
                             
                             # 点击对话框中的 Save job 按钮
-                            confirm_button = dialog.locator('button:has-text("Save job")')
-                            confirm_button.wait_for(state='visible', timeout=5000)
+                            # confirm_button = dialog.locator('button:has-text("Save job")')
+                            # confirm_button.wait_for(state='visible', timeout=5000)
+                            confirm_button = page.locator('span:has-text(" Confirm and submit job ")')
                             print("找到确认按钮")
                             
                             # 尝试直接点击
                             try:
-                                confirm_button.click(timeout=5000)
+                                confirm_button.click()
                                 print("已点击确认按钮")
                             except Exception as e:
                                 print(f"直接点击失败: {e}")
-                                print("尝试使用JavaScript点击...")
-                                # 使用JavaScript点击，通过文本内容定位按钮
-                                page.evaluate('''() => {
-                                    const buttons = Array.from(document.querySelectorAll('button'));
-                                    const saveButton = buttons.find(button => 
-                                        button.querySelector('.mdc-button__label')?.textContent.trim() === 'Save job'
-                                    );
-                                    if (saveButton) saveButton.click();
-                                }''')
-                                print("已通过JavaScript点击确认按钮")
+                                # print("尝试使用JavaScript点击...")
+                                # # 使用JavaScript点击，通过文本内容定位按钮
+                                # page.evaluate('''() => {
+                                #     const buttons = Array.from(document.querySelectorAll('button'));
+                                #     const saveButton = buttons.find(button => 
+                                #         button.querySelector('.mdc-button__label')?.textContent.trim() === 'Save job'
+                                #     );
+                                #     if (saveButton) saveButton.click();
+                                # }''')
+                                # print("已通过JavaScript点击确认按钮")
                         
                         except Exception as e:
                             print(f"保存作业过程中出错: {e}")
                             continue
                         
-                        time.sleep(2)
+                        time.sleep(6)
                         
                         # 等待对话框消失
                         dialog.wait_for(state='hidden', timeout=5000)
                         print("对话框已消失")
                         
                         print(f"序列 {name} 已保存")
+                        
+                        # 等待2秒
+                        print("等待2秒...")
+                        time.sleep(6)
+                        
+                        # 点击 Clear 按钮
+                        print("点击 Clear 按钮...")
+                        try:
+                            clear_button = page.locator('button:has-text("Clear")')
+                            clear_button.wait_for(state='visible', timeout=5000)
+                            clear_button.click()
+                            print("已点击 Clear 按钮")
+                            
+                            # 等待序列输入框清空
+                            # time.sleep(1)
+                            # sequence_input = page.locator('textarea.sequence-input').last
+                            # if sequence_input.is_visible():
+                            #     text = sequence_input.input_value()
+                            #     if text:
+                            #         print("警告：序列输入框未清空，尝试重新点击")
+                            #         clear_button.click()
+                            #         time.sleep(1)
+                        except Exception as e:
+                            print(f"点击 Clear 按钮时出错: {e}")
+                            # 尝试使用JavaScript点击
+                            try:
+                                page.evaluate('''() => {
+                                    const buttons = Array.from(document.querySelectorAll('button'));
+                                    const clearButton = buttons.find(button => 
+                                        button.querySelector('.mdc-button__label')?.textContent.trim() === 'Clear'
+                                    );
+                                    if (clearButton) clearButton.click();
+                                }''')
+                                print("已通过JavaScript点击 Clear 按钮")
+                                time.sleep(1)
+                            except Exception as e:
+                                print(f"JavaScript点击也失败: {e}")
+                        
+                        # 再等待1秒确保清除完成
+                        time.sleep(3)
                     
                     except Exception as e:
                         print(f"发生错误: {e}")
