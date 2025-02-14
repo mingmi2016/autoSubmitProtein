@@ -150,16 +150,118 @@ def submit_sequences():
                     add_button.click()
                     time.sleep(1)
                     
-                    # 等待新的序列输入框出现
+                    # 等待新的序列输入框出现并定位到最后一个
                     sequence_input = page.locator('textarea.sequence-input').last
                     if not sequence_input.is_visible(timeout=5000):
                         print(f"错误：无法找到序列输入框 - {name}")
                         continue
                     
+                    def input_sequence(retry=False):
+                        if retry:
+                            print("重试：清除并重新输入序列...")
+                            # 点击 Clear 按钮
+                            clear_button = page.locator('button:has-text("Clear")')
+                            if clear_button.is_visible():
+                                clear_button.click()
+                                time.sleep(1)
+                        
+                        # 先输入前4个字符，模拟手动输入
+                        print("输入前4个字符...")
+                        sequence_input.click()  # 确保焦点在正确的输入框上
+                        
+                        # 一个一个字符输入，模拟真实输入速度
+                        for i in range(4):
+                            sequence_input.type(sequence[i], delay=200)  # 每个字符输入延迟200ms
+                            print(f"已输入: {sequence[i]}")
+                            time.sleep(0.3)  # 字符之间额外等待0.3秒
+                        
+                        time.sleep(1)  # 等待序列验证
+                        
+                        # 检查 Save job 按钮状态
+                        save_button = page.locator('button:has-text("Save job")')
+                        print("检查 Save job 按钮状态...")
+                        
+                        def is_button_enabled():
+                            # 检查按钮是否有 disabled 属性
+                            return not save_button.get_attribute('disabled')
+                        
+                        if not is_button_enabled():
+                            if not retry:  # 如果是第一次尝试，就重试一次
+                                return input_sequence(retry=True)
+                            return False
+                        
+                        # 输入剩余序列，也模拟手动输入
+                        print("输入剩余序列...")
+                        sequence_input.click()  # 再次确保焦点
+                        remaining_sequence = sequence[4:]
+                        
+                        # 分批输入剩余序列，每批10个字符
+                        chunk_size = 10
+                        for i in range(0, len(remaining_sequence), chunk_size):
+                            chunk = remaining_sequence[i:i+chunk_size]
+                            sequence_input.type(chunk, delay=100)  # 每个字符延迟100ms
+                            time.sleep(0.2)  # 每个块之间等待0.2秒
+                        
+                        time.sleep(1)  # 等待序列验证
+                        return True
+                    
                     # 输入序列
-                    sequence_input.fill(sequence)
-                    print(f"已输入序列（长度：{len(sequence)}）")
+                    print(f"正在输入序列...")
+                    
+                    # 等待新的序列输入框出现并定位到最后一个
+                    sequence_input = page.locator('textarea.sequence-input').last
+                    if not sequence_input.is_visible(timeout=5000):
+                        print(f"错误：无法找到序列输入框 - {name}")
+                        continue
+                    
+                    # 尝试输入序列
+                    if not input_sequence():
+                        print("错误：无法启用 Save job 按钮")
+                        continue
+                    
+                    print("Save job 按钮已可用")
                     time.sleep(1)
+                    
+                    try:
+                        save_button.click(timeout=5000)
+                    except Exception as e:
+                        print(f"点击 Save job 按钮失败: {e}")
+                        print("尝试使用 JavaScript 点击...")
+                        page.evaluate('document.querySelector("button:has-text(\'Save job\')").click()')
+                    
+                    time.sleep(2)
+                    
+                    # 等待对话框出现
+                    dialog = page.locator('gdm-af-preview-dialog')
+                    if not dialog.is_visible(timeout=5000):
+                        print("错误：无法找到保存对话框")
+                        continue
+                    
+                    # 输入 Job name - 使用更精确的选择器
+                    job_name_input = page.locator('input[aria-label="Job name"]')
+                    if not job_name_input.is_visible(timeout=5000):
+                        print("错误：无法找到 Job name 输入框")
+                        continue
+                    
+                    job_name_input.fill(name)
+                    time.sleep(1)
+                    
+                    # 点击 Seed 开关
+                    seed_toggle = page.locator('mat-slide-toggle.seed-toggle')
+                    if seed_toggle.is_visible():
+                        seed_toggle.click()
+                        time.sleep(1)
+                    
+                    # 点击对话框中的 Save job 按钮
+                    confirm_button = page.locator('button.confirm')
+                    if not confirm_button.is_visible(timeout=5000):
+                        print("错误：无法找到确认按钮")
+                        continue
+                    
+                    confirm_button.click()
+                    time.sleep(2)  # 等待保存完成
+                    
+                    print(f"序列 {name} 已保存")
                 
                 print("\n所有序列已提交完成！")
                 print("按回车键关闭浏览器...")
